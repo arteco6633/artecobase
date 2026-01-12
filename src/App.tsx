@@ -26,7 +26,7 @@ function App() {
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [shareItem, setShareItem] = useState<DocumentItem | null>(null);
 
-  const { documents, addTable, addDocument, updateTable, updateDocument, deleteDocument, generateShareLink } = useDocuments();
+  const { documents, loading, error, addTable, addDocument, updateTable, updateDocument, deleteDocument, generateShareLink } = useDocuments();
 
   // Фильтрация документов по категории и поисковому запросу
   const filteredDocuments = useMemo(() => {
@@ -80,24 +80,34 @@ function App() {
     }
   };
 
-  const handleSaveTable = (table: Table) => {
-    if (editingTable) {
-      updateTable(table.id, table);
-    } else {
-      addTable(table);
+  const handleSaveTable = async (table: Table) => {
+    try {
+      if (editingTable) {
+        await updateTable(table.id, table);
+      } else {
+        await addTable(table);
+      }
+      setIsTableEditorOpen(false);
+      setEditingTable(null);
+    } catch (err: any) {
+      console.error('Ошибка сохранения таблицы:', err);
+      alert(`Ошибка сохранения: ${err.message || 'Неизвестная ошибка'}`);
     }
-    setIsTableEditorOpen(false);
-    setEditingTable(null);
   };
 
-  const handleSaveDocument = (doc: Document) => {
-    if (editingDocument) {
-      updateDocument(doc.id, doc);
-    } else {
-      addDocument(doc);
+  const handleSaveDocument = async (doc: Document) => {
+    try {
+      if (editingDocument) {
+        await updateDocument(doc.id, doc);
+      } else {
+        await addDocument(doc);
+      }
+      setIsDocumentEditorOpen(false);
+      setEditingDocument(null);
+    } catch (err: any) {
+      console.error('Ошибка сохранения документа:', err);
+      alert(`Ошибка сохранения: ${err.message || 'Неизвестная ошибка'}`);
     }
-    setIsDocumentEditorOpen(false);
-    setEditingDocument(null);
   };
 
   const handleShare = (doc: DocumentItem) => {
@@ -105,9 +115,14 @@ function App() {
     setIsShareModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот документ?')) {
-      deleteDocument(id);
+      try {
+        await deleteDocument(id);
+      } catch (err: any) {
+        console.error('Ошибка удаления:', err);
+        alert(`Ошибка удаления: ${err.message || 'Неизвестная ошибка'}`);
+      }
     }
   };
 
@@ -136,14 +151,26 @@ function App() {
               Найдено документов: {filteredDocuments.length}
             </p>
           </div>
-          
-          <DocumentGrid
-            documents={filteredDocuments}
-            onEdit={handleEdit}
-            onView={handleView}
-            onShare={handleShare}
-            onDelete={handleDelete}
-          />
+
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">Ошибка: {error}</p>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-gray-500">Загрузка документов...</div>
+            </div>
+          ) : (
+            <DocumentGrid
+              documents={filteredDocuments}
+              onEdit={handleEdit}
+              onView={handleView}
+              onShare={handleShare}
+              onDelete={handleDelete}
+            />
+          )}
         </main>
       </div>
 

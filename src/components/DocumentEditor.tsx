@@ -38,7 +38,7 @@ export function DocumentEditor({ document, isOpen, onClose, onSave }: DocumentEd
     }
 
     const docData: Document = {
-      id: document?.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: document?.id || '', // ID будет сгенерирован на сервере
       name: name.trim(),
       category,
       description: description.trim() || undefined,

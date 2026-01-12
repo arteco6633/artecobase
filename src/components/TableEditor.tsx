@@ -36,14 +36,13 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
   if (!isOpen) return null;
 
   const handleAddColumn = () => {
-    const newColumnName = prompt('Введите название колонки:');
-    if (newColumnName) {
-      setColumns([...columns, newColumnName]);
-      setRows(rows.map(row => ({
-        ...row,
-        cells: [...row.cells, { value: '' }],
-      })));
-    }
+    // Добавляем колонку с автоматическим названием, которое можно сразу редактировать
+    const newColumnName = `Колонка ${columns.length + 1}`;
+    setColumns([...columns, newColumnName]);
+    setRows(rows.map(row => ({
+      ...row,
+      cells: [...row.cells, { value: '' }],
+    })));
   };
 
   const handleRemoveColumn = (index: number) => {
@@ -87,7 +86,7 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
     }
 
     const tableData: Table = {
-      id: table?.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: table?.id || '', // ID будет сгенерирован на сервере
       name: name.trim(),
       category,
       description: description.trim() || undefined,
@@ -197,18 +196,20 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
                 <thead className="bg-gray-50">
                   <tr>
                     {columns.map((col, colIndex) => (
-                      <th key={colIndex} className="border border-gray-200 p-2">
-                        <div className="flex items-center justify-between">
+                      <th key={colIndex} className="border border-gray-200 p-2 bg-gray-50">
+                        <div className="flex items-center justify-between gap-2">
                           <input
                             type="text"
                             value={col}
                             onChange={(e) => handleColumnNameChange(colIndex, e.target.value)}
-                            className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+                            placeholder="Название колонки"
+                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium bg-white text-gray-900"
+                            title="Редактировать название колонки"
                           />
                           {columns.length > 1 && (
                             <button
                               onClick={() => handleRemoveColumn(colIndex)}
-                              className="ml-2 p-1 text-red-600 hover:bg-red-50 rounded"
+                              className="flex-shrink-0 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                               title="Удалить колонку"
                             >
                               <Trash2 className="w-4 h-4" />
