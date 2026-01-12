@@ -12,6 +12,7 @@ interface DocumentRow {
   content: any; // JSON для таблиц: {columns: [], rows: []}, для документов: {text: ""}
   tags: string[];
   shareable: boolean;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ export function useDocuments() {
             updatedAt: new Date(row.updated_at),
             tags: row.tags || [],
             shareable: row.shareable,
+            userId: (row as any).user_id,
           } as Table;
         } else {
           const docContent = row.content as { text: string };
@@ -69,6 +71,7 @@ export function useDocuments() {
             updatedAt: new Date(row.updated_at),
             tags: row.tags || [],
             shareable: row.shareable,
+            userId: (row as any).user_id,
           } as Document;
         }
       });
@@ -84,6 +87,9 @@ export function useDocuments() {
 
   const addTable = async (table: Table) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || null;
+
       const { error: insertError } = await supabase
         .from('documents')
         .insert({
@@ -97,6 +103,7 @@ export function useDocuments() {
           },
           tags: table.tags,
           shareable: table.shareable ?? true,
+          user_id: userId,
         });
 
       if (insertError) throw insertError;
@@ -111,6 +118,9 @@ export function useDocuments() {
 
   const addDocument = async (doc: Document) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || null;
+
       const { error: insertError } = await supabase
         .from('documents')
         .insert({
@@ -123,6 +133,7 @@ export function useDocuments() {
           },
           tags: doc.tags,
           shareable: doc.shareable ?? true,
+          user_id: userId,
         });
 
       if (insertError) throw insertError;

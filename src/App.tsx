@@ -8,10 +8,59 @@ import { DocumentEditor } from './components/DocumentEditor';
 import { TableViewer } from './components/TableViewer';
 import { DocumentViewer } from './components/DocumentViewer';
 import { ShareModal } from './components/ShareModal';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
+import { UserProfile } from './components/UserProfile';
 import { useDocuments } from './hooks/useDocuments';
-import type { DocumentItem, CategoryType, Table, Document } from './types';
+import { useAuth } from './hooks/useAuth';
+import type { DocumentItem, CategoryType, Table, Document, User } from './types';
 
 function App() {
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const { user, loading: authLoading, signUp, signIn, signOut } = useAuth();
+
+  // Если загрузка аутентификации, показываем загрузку
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+
+  // Если не авторизован, показываем форму входа/регистрации
+  if (!user) {
+    if (authMode === 'login') {
+      return (
+        <Login
+          onLogin={async (email, password) => {
+            const result = await signIn(email, password);
+            return result;
+          }}
+          onSwitchToRegister={() => setAuthMode('register')}
+        />
+      );
+    } else {
+      return (
+        <Register
+          onRegister={async (email, password, role) => {
+            const result = await signUp(email, password, role);
+            return result;
+          }}
+          onSwitchToLogin={() => setAuthMode('login')}
+        />
+      );
+    }
+  }
+
+  // Для авторизованных пользователей рендерим отдельный компонент
+  return <AuthenticatedApp user={user} signOut={signOut} />;
+}
+
+// Отдельный компонент для авторизованного пользователя
+// Все хуки должны вызываться здесь, а не условно
+function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promise<{ error: string | null }> }) {
+  const [showProfile, setShowProfile] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -26,6 +75,7 @@ function App() {
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [shareItem, setShareItem] = useState<DocumentItem | null>(null);
 
+  // Все хуки вызываются здесь, после того как мы знаем, что пользователь авторизован
   const { documents, loading, error, addTable, addDocument, updateTable, updateDocument, deleteDocument, generateShareLink } = useDocuments();
 
   // Фильтрация документов по категории и поисковому запросу
@@ -50,6 +100,36 @@ function App() {
     return filtered;
   }, [documents, selectedCategory, searchQuery]);
 
+  // Если открыт профиль, показываем его
+  if (showProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header
+          user={user}
+          onCreateClick={() => setShowProfile(false)}
+          onProfileClick={() => setShowProfile(false)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+        <div className="max-w-4xl mx-auto p-6">
+          <button
+            onClick={() => setShowProfile(false)}
+            className="mb-4 text-blue-600 hover:text-blue-700"
+          >
+            ← Назад к документам
+          </button>
+          <UserProfile
+            user={user}
+            onLogout={async () => {
+              await signOut();
+              setShowProfile(false);
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   const handleCreateTable = () => {
     setEditingTable(null);
     setIsTableEditorOpen(true);
@@ -61,6 +141,8 @@ function App() {
   };
 
   const handleEdit = (doc: DocumentItem) => {
+    if (user.role !== 'admin') return; // Только админы могут редактировать
+    
     if ('columns' in doc) {
       setEditingTable(doc);
       setIsTableEditorOpen(true);
@@ -111,11 +193,14 @@ function App() {
   };
 
   const handleShare = (doc: DocumentItem) => {
+    if (user.role !== 'admin') return; // Только админы могут делиться
     setShareItem(doc);
     setIsShareModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
+    if (user.role !== 'admin') return; // Только админы могут удалять
+    
     if (window.confirm('Вы уверены, что хотите удалить этот документ?')) {
       try {
         await deleteDocument(id);
@@ -131,7 +216,9 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
+        user={user}
         onCreateClick={() => setIsCreateModalOpen(true)}
+        onProfileClick={() => setShowProfile(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
@@ -165,6 +252,7 @@ function App() {
           ) : (
             <DocumentGrid
               documents={filteredDocuments}
+              userRole={user.role}
               onEdit={handleEdit}
               onView={handleView}
               onShare={handleShare}
@@ -174,32 +262,36 @@ function App() {
         </main>
       </div>
 
-      <CreateModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreateTable={handleCreateTable}
-        onCreateDocument={handleCreateDocument}
-      />
+      {user.role === 'admin' && (
+        <>
+          <CreateModal
+            isOpen={isCreateModalOpen}
+            onClose={() => setIsCreateModalOpen(false)}
+            onCreateTable={handleCreateTable}
+            onCreateDocument={handleCreateDocument}
+          />
 
-      <TableEditor
-        table={editingTable}
-        isOpen={isTableEditorOpen}
-        onClose={() => {
-          setIsTableEditorOpen(false);
-          setEditingTable(null);
-        }}
-        onSave={handleSaveTable}
-      />
+          <TableEditor
+            table={editingTable}
+            isOpen={isTableEditorOpen}
+            onClose={() => {
+              setIsTableEditorOpen(false);
+              setEditingTable(null);
+            }}
+            onSave={handleSaveTable}
+          />
 
-      <DocumentEditor
-        document={editingDocument}
-        isOpen={isDocumentEditorOpen}
-        onClose={() => {
-          setIsDocumentEditorOpen(false);
-          setEditingDocument(null);
-        }}
-        onSave={handleSaveDocument}
-      />
+          <DocumentEditor
+            document={editingDocument}
+            isOpen={isDocumentEditorOpen}
+            onClose={() => {
+              setIsDocumentEditorOpen(false);
+              setEditingDocument(null);
+            }}
+            onSave={handleSaveDocument}
+          />
+        </>
+      )}
 
       <TableViewer
         table={viewingTable}
@@ -219,15 +311,17 @@ function App() {
         }}
       />
 
-      <ShareModal
-        file={shareItem}
-        shareLink={shareLink}
-        isOpen={isShareModalOpen}
-        onClose={() => {
-          setIsShareModalOpen(false);
-          setShareItem(null);
-        }}
-      />
+      {user.role === 'admin' && (
+        <ShareModal
+          file={shareItem}
+          shareLink={shareLink}
+          isOpen={isShareModalOpen}
+          onClose={() => {
+            setIsShareModalOpen(false);
+            setShareItem(null);
+          }}
+        />
+      )}
     </div>
   );
 }

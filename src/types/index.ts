@@ -2,6 +2,7 @@
 
 export type CategoryType = 'materials' | 'furniture' | 'order-forms' | 'production' | 'other';
 export type DocumentType = 'table' | 'document';
+export type UserRole = 'admin' | 'partner';
 
 export interface TableCell {
   value: string;
@@ -23,6 +24,7 @@ export interface Table {
   updatedAt: Date;
   tags: string[];
   shareable?: boolean;
+  userId?: string; // ID пользователя-владельца
 }
 
 export interface Document {
@@ -35,6 +37,7 @@ export interface Document {
   updatedAt: Date;
   tags: string[];
   shareable?: boolean;
+  userId?: string; // ID пользователя-владельца
 }
 
 export type DocumentItem = Table | Document;
@@ -44,4 +47,10 @@ export interface Category {
   name: string;
   icon: string;
   color: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role: UserRole;
 }

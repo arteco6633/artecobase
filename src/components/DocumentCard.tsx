@@ -1,18 +1,21 @@
 import type { DocumentItem } from '../types';
 import { Share2, Trash2, Table as TableIcon, FileText, Edit, Eye } from 'lucide-react';
 import { format } from 'date-fns';
+import type { UserRole } from '../types';
 
 interface DocumentCardProps {
   document: DocumentItem;
+  userRole?: UserRole;
   onEdit: (doc: DocumentItem) => void;
   onView: (doc: DocumentItem) => void;
   onShare: (doc: DocumentItem) => void;
   onDelete: (id: string) => void;
 }
 
-export function DocumentCard({ document, onEdit, onView, onShare, onDelete }: DocumentCardProps) {
+export function DocumentCard({ document, userRole, onEdit, onView, onShare, onDelete }: DocumentCardProps) {
   const isTable = 'columns' in document;
   const Icon = isTable ? TableIcon : FileText;
+  const canEdit = userRole === 'admin';
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
@@ -66,28 +69,34 @@ export function DocumentCard({ document, onEdit, onView, onShare, onDelete }: Do
           >
             <Eye className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onEdit(document)}
-            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Редактировать"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onShare(document)}
-            className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-            title="Поделиться"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
+          {canEdit && (
+            <>
+              <button
+                onClick={() => onEdit(document)}
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                title="Редактировать"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onShare(document)}
+                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                title="Поделиться"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </>
+          )}
         </div>
-        <button
-          onClick={() => onDelete(document.id)}
-          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          title="Удалить"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => onDelete(document.id)}
+            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Удалить"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </div>
   );

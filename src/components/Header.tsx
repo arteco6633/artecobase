@@ -1,12 +1,17 @@
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, User } from 'lucide-react';
+import type { User as UserType } from '../types';
 
 interface HeaderProps {
+  user: UserType | null;
   onCreateClick: () => void;
+  onProfileClick: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
-export function Header({ onCreateClick, searchQuery, onSearchChange }: HeaderProps) {
+export function Header({ user, onCreateClick, onProfileClick, searchQuery, onSearchChange }: HeaderProps) {
+  const canCreate = user?.role === 'admin';
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -28,13 +33,26 @@ export function Header({ onCreateClick, searchQuery, onSearchChange }: HeaderPro
               />
             </div>
             
-            <button
-              onClick={onCreateClick}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">Создать</span>
-            </button>
+            {canCreate && (
+              <button
+                onClick={onCreateClick}
+                className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Создать</span>
+              </button>
+            )}
+            
+            {user && (
+              <button
+                onClick={onProfileClick}
+                className="flex items-center space-x-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                title="Личный кабинет"
+              >
+                <User className="w-5 h-5" />
+                <span className="hidden sm:inline">{user.email}</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
