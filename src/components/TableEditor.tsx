@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Plus, Trash2, Save, Image as ImageIcon } from 'lucide-react';
 import type { Table, Category } from '../types';
+import { uploadTableImage } from '../lib/uploadImage';
 
 interface TableEditorProps {
   table: Table | null;
@@ -15,7 +16,9 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
   const [categoryId, setCategoryId] = useState<string>('');
   const [description, setDescription] = useState('');
   const [columns, setColumns] = useState<string[]>(['Название', 'Цена', 'Ед. изм.']);
-  const [rows, setRows] = useState<Array<{ id: string; cells: Array<{ value: string }> }>>([]);
+  const [rows, setRows] = useState<Array<{ id: string; cells: Array<{ value: string }>; imageUrl?: string }>>([]);
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   useEffect(() => {
     if (table) {
@@ -62,7 +65,45 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
     setRows([...rows, {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       cells: columns.map(() => ({ value: '' })),
+      imageUrl: undefined,
     }]);
+  };
+
+  const handleImageUpload = async (rowId: string, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите файл изображения');
+      return;
+    }
+
+    // Используем временный ID для новой таблицы
+    const tableId = table?.id || 'temp-' + Date.now();
+    
+    setUploadingImage(rowId);
+    try {
+      const imageUrl = await uploadTableImage(file, tableId, rowId);
+      if (imageUrl) {
+        setRows(rows.map(row => 
+          row.id === rowId ? { ...row, imageUrl } : row
+        ));
+      } else {
+        alert('Ошибка загрузки изображения');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки изображения:', error);
+      alert('Ошибка загрузки изображения');
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  const handleImageClick = (rowId: string) => {
+    fileInputRefs.current[rowId]?.click();
+  };
+
+  const handleImageRemove = (rowId: string) => {
+    setRows(rows.map(row => 
+      row.id === rowId ? { ...row, imageUrl: undefined } : row
+    ));
   };
 
   const handleRemoveRow = (rowId: string) => {
@@ -236,7 +277,7 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={columns.length} className="px-4 py-8 text-center text-gray-500">
+                      <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-gray-500">
                         Нет данных. Добавьте строки, используя кнопку ниже.
                       </td>
                     </tr>
@@ -254,13 +295,62 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
                           </td>
                         ))}
                         <td className="px-4 py-2">
-                          <button
-                            onClick={() => handleRemoveRow(row.id)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Удалить строку"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="file"
+                              ref={(el) => (fileInputRefs.current[row.id] = el)}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleImageUpload(row.id, file);
+                                }
+                                // Сброс input для возможности выбора того же файла снова
+                                e.target.value = '';
+                              }}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            {row.imageUrl ? (
+                              <div className="relative group">
+                                <img
+                                  src={row.imageUrl}
+                                  alt="Превью"
+                                  className="w-10 h-10 object-cover rounded border border-gray-300 cursor-pointer"
+                                  onClick={() => handleImageClick(row.id)}
+                                />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleImageRemove(row.id);
+                                  }}
+                                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  title="Удалить фото"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleImageClick(row.id)}
+                                disabled={uploadingImage === row.id}
+                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Добавить фото"
+                              >
+                                {uploadingImage === row.id ? (
+                                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <ImageIcon className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleRemoveRow(row.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Удалить строку"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

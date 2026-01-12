@@ -49,7 +49,7 @@ export function useDocuments() {
         const categoryId = row.category_id || '';
         
         if (row.type === 'table') {
-          const tableContent = row.content as { columns: string[]; rows: Array<{ id: string; cells: Array<{ value: string }> }> };
+          const tableContent = row.content as { columns: string[]; rows: Array<{ id: string; cells: Array<{ value: string }>; imageUrl?: string }> };
           return {
             id: row.id,
             name: row.name,

@@ -10,6 +10,7 @@ export interface TableCell {
 export interface TableRow {
   id: string;
   cells: TableCell[];
+  imageUrl?: string; // URL фото для строки таблицы
 }
 
 export interface Table {

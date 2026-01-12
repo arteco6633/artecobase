@@ -87,6 +87,12 @@ export function TableViewer({ table, isOpen, onClose }: TableViewerProps) {
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-gray-50 border-b-2 border-gray-200">
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                      #
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                      Фото
+                    </th>
                     {table.columns.map((column, index) => (
                       <th
                         key={index}
@@ -98,11 +104,27 @@ export function TableViewer({ table, isOpen, onClose }: TableViewerProps) {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRows.map((row) => (
+                  {filteredRows.map((row, rowIndex) => (
                     <tr
                       key={row.id}
                       className="hover:bg-blue-50 transition-colors"
                     >
+                      <td className="px-4 py-3 text-sm text-gray-500 border-b border-gray-100">
+                        {rowIndex + 1}
+                      </td>
+                      <td className="px-4 py-3 border-b border-gray-100">
+                        {row.imageUrl ? (
+                          <img
+                            src={row.imageUrl}
+                            alt="Фото"
+                            className="w-16 h-16 object-cover rounded border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                            Нет фото
+                          </div>
+                        )}
+                      </td>
                       {row.cells.map((cell, cellIndex) => {
                         const cellValue = cell.value || '';
                         const isMatch = searchQuery.trim() && cellValue.toLowerCase().includes(searchQuery.toLowerCase());
