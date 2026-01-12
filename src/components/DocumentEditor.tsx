@@ -1,33 +1,35 @@
 import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
-import type { Document, CategoryType } from '../types';
+import type { Document, Category } from '../types';
 
 interface DocumentEditorProps {
   document: Document | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (doc: Document) => void;
+  categories: Category[];
 }
 
-export function DocumentEditor({ document, isOpen, onClose, onSave }: DocumentEditorProps) {
+export function DocumentEditor({ document, isOpen, onClose, onSave, categories }: DocumentEditorProps) {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<CategoryType>('materials');
+  const [categoryId, setCategoryId] = useState<string>('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
 
   useEffect(() => {
     if (document) {
       setName(document.name);
-      setCategory(document.category);
+      setCategoryId(document.categoryId);
       setDescription(document.description || '');
       setContent(document.content);
     } else {
+      // Новый документ - используем первую категорию по умолчанию
       setName('');
-      setCategory('materials');
+      setCategoryId(categories.length > 0 ? categories[0].id : '');
       setDescription('');
       setContent('');
     }
-  }, [document, isOpen]);
+  }, [document, isOpen, categories]);
 
   if (!isOpen) return null;
 
@@ -37,10 +39,15 @@ export function DocumentEditor({ document, isOpen, onClose, onSave }: DocumentEd
       return;
     }
 
+    if (!categoryId) {
+      alert('Выберите категорию');
+      return;
+    }
+
     const docData: Document = {
       id: document?.id || '', // ID будет сгенерирован на сервере
       name: name.trim(),
-      category,
+      categoryId: categoryId,
       description: description.trim() || undefined,
       content,
       createdAt: document?.createdAt || new Date(),
@@ -51,6 +58,18 @@ export function DocumentEditor({ document, isOpen, onClose, onSave }: DocumentEd
 
     onSave(docData);
     onClose();
+  };
+
+  // Функция для отображения категории с учетом иерархии
+  const getCategoryDisplayName = (category: Category, allCategories: Category[]): string => {
+    if (!category.parentId) {
+      return category.name;
+    }
+    const parent = allCategories.find(c => c.id === category.parentId);
+    if (parent) {
+      return `${parent.name} > ${category.name}`;
+    }
+    return category.name;
   };
 
   return (
@@ -85,18 +104,21 @@ export function DocumentEditor({ document, isOpen, onClose, onSave }: DocumentEd
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Категория
+                Категория *
               </label>
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as CategoryType)}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="materials">Материалы</option>
-                <option value="furniture">Фурнитура</option>
-                <option value="order-forms">Бланки заказа</option>
-                <option value="production">Производство</option>
-                <option value="other">Прочее</option>
+                {categories.length === 0 && (
+                  <option value="">Нет категорий</option>
+                )}
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getCategoryDisplayName(category, categories)}
+                  </option>
+                ))}
               </select>
             </div>
 

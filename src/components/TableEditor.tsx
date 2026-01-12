@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save } from 'lucide-react';
-import type { Table, CategoryType } from '../types';
+import type { Table, Category } from '../types';
 
 interface TableEditorProps {
   table: Table | null;
   isOpen: boolean;
   onClose: () => void;
   onSave: (table: Table) => void;
+  categories: Category[];
 }
 
-export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps) {
+export function TableEditor({ table, isOpen, onClose, onSave, categories }: TableEditorProps) {
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<CategoryType>('materials');
+  const [categoryId, setCategoryId] = useState<string>('');
   const [description, setDescription] = useState('');
   const [columns, setColumns] = useState<string[]>(['Название', 'Цена', 'Ед. изм.']);
   const [rows, setRows] = useState<Array<{ id: string; cells: Array<{ value: string }> }>>([]);
@@ -19,19 +20,19 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
   useEffect(() => {
     if (table) {
       setName(table.name);
-      setCategory(table.category);
+      setCategoryId(table.categoryId);
       setDescription(table.description || '');
       setColumns(table.columns);
       setRows(table.rows);
     } else {
-      // Новый документ
+      // Новый документ - используем первую категорию по умолчанию
       setName('');
-      setCategory('materials');
+      setCategoryId(categories.length > 0 ? categories[0].id : '');
       setDescription('');
       setColumns(['Название', 'Цена', 'Ед. изм.']);
       setRows([]);
     }
-  }, [table, isOpen]);
+  }, [table, isOpen, categories]);
 
   if (!isOpen) return null;
 
@@ -85,10 +86,15 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
       return;
     }
 
+    if (!categoryId) {
+      alert('Выберите категорию');
+      return;
+    }
+
     const tableData: Table = {
       id: table?.id || '', // ID будет сгенерирован на сервере
       name: name.trim(),
-      category,
+      categoryId: categoryId,
       description: description.trim() || undefined,
       columns,
       rows,
@@ -106,6 +112,18 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
     const newColumns = [...columns];
     newColumns[index] = newName;
     setColumns(newColumns);
+  };
+
+  // Функция для отображения категории с учетом иерархии
+  const getCategoryDisplayName = (category: Category, allCategories: Category[]): string => {
+    if (!category.parentId) {
+      return category.name;
+    }
+    const parent = allCategories.find(c => c.id === category.parentId);
+    if (parent) {
+      return `${parent.name} > ${category.name}`;
+    }
+    return category.name;
   };
 
   return (
@@ -140,18 +158,21 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Категория
+                Категория *
               </label>
               <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as CategoryType)}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="materials">Материалы</option>
-                <option value="furniture">Фурнитура</option>
-                <option value="order-forms">Бланки заказа</option>
-                <option value="production">Производство</option>
-                <option value="other">Прочее</option>
+                {categories.length === 0 && (
+                  <option value="">Нет категорий</option>
+                )}
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {getCategoryDisplayName(category, categories)}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -171,45 +192,37 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
 
           {/* Редактор таблицы */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <div className="bg-gray-50 border-b border-gray-200 p-4 flex items-center justify-between">
-              <h3 className="font-medium text-gray-900">Данные таблицы</h3>
+            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="font-medium text-gray-900">Структура таблицы</h3>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleAddColumn}
-                  className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Добавить колонку</span>
-                </button>
-                <button
-                  onClick={handleAddRow}
-                  className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Добавить строку</span>
                 </button>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {columns.map((col, colIndex) => (
-                      <th key={colIndex} className="border border-gray-200 p-2 bg-gray-50">
-                        <div className="flex items-center justify-between gap-2">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-200">
+                    {columns.map((column, index) => (
+                      <th key={index} className="px-4 py-3 text-left">
+                        <div className="flex items-center space-x-2">
                           <input
                             type="text"
-                            value={col}
-                            onChange={(e) => handleColumnNameChange(colIndex, e.target.value)}
+                            value={column}
+                            onChange={(e) => handleColumnNameChange(index, e.target.value)}
+                            className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             placeholder="Название колонки"
-                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium bg-white text-gray-900"
-                            title="Редактировать название колонки"
                           />
                           {columns.length > 1 && (
                             <button
-                              onClick={() => handleRemoveColumn(colIndex)}
-                              className="flex-shrink-0 p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              onClick={() => handleRemoveColumn(index)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                               title="Удалить колонку"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -218,21 +231,20 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
                         </div>
                       </th>
                     ))}
-                    <th className="border border-gray-200 p-2 w-16 bg-gray-50"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.length === 0 ? (
                     <tr>
-                      <td colSpan={columns.length + 1} className="border border-gray-200 p-8 text-center text-gray-500">
-                        Нет данных. Нажмите "Добавить строку" для начала работы
+                      <td colSpan={columns.length} className="px-4 py-8 text-center text-gray-500">
+                        Нет данных. Добавьте строки, используя кнопку ниже.
                       </td>
                     </tr>
                   ) : (
                     rows.map((row) => (
-                      <tr key={row.id} className="hover:bg-gray-50">
+                      <tr key={row.id} className="border-b border-gray-200 hover:bg-gray-50">
                         {row.cells.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="border border-gray-200 p-2">
+                          <td key={cellIndex} className="px-4 py-2">
                             <input
                               type="text"
                               value={cell.value}
@@ -241,10 +253,10 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
                             />
                           </td>
                         ))}
-                        <td className="border border-gray-200 p-2">
+                        <td className="px-4 py-2">
                           <button
                             onClick={() => handleRemoveRow(row.id)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                             title="Удалить строку"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -255,6 +267,16 @@ export function TableEditor({ table, isOpen, onClose, onSave }: TableEditorProps
                   )}
                 </tbody>
               </table>
+            </div>
+
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+              <button
+                onClick={handleAddRow}
+                className="flex items-center space-x-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Добавить строку</span>
+              </button>
             </div>
           </div>
         </div>

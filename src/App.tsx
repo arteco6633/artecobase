@@ -13,7 +13,8 @@ import { Register } from './components/Register';
 import { UserProfile } from './components/UserProfile';
 import { useDocuments } from './hooks/useDocuments';
 import { useAuth } from './hooks/useAuth';
-import type { DocumentItem, CategoryType, Table, Document, User } from './types';
+import { useCategories } from './hooks/useCategories';
+import type { DocumentItem, Table, Document, User } from './types';
 
 function App() {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
@@ -61,7 +62,7 @@ function App() {
 // Все хуки должны вызываться здесь, а не условно
 function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promise<{ error: string | null }> }) {
   const [showProfile, setShowProfile] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isTableEditorOpen, setIsTableEditorOpen] = useState(false);
@@ -69,6 +70,7 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
   const [isTableViewerOpen, setIsTableViewerOpen] = useState(false);
   const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // По умолчанию закрыт
   const [editingTable, setEditingTable] = useState<Table | null>(null);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [viewingTable, setViewingTable] = useState<Table | null>(null);
@@ -77,6 +79,7 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
 
   // Все хуки вызываются здесь, после того как мы знаем, что пользователь авторизован
   const { documents, loading, error, addTable, addDocument, updateTable, updateDocument, deleteDocument, generateShareLink } = useDocuments();
+  const { categories } = useCategories();
 
   // Фильтрация документов по категории и поисковому запросу
   const filteredDocuments = useMemo(() => {
@@ -84,7 +87,7 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
 
     // Фильтр по категории
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(doc => doc.category === selectedCategory);
+      filtered = filtered.filter(doc => doc.categoryId === selectedCategory);
     }
 
     // Фильтр по поисковому запросу
@@ -221,22 +224,33 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
         onProfileClick={() => setShowProfile(true)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        onMenuToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        isMenuOpen={isSidebarOpen}
       />
       
-      <div className="flex">
+      <div className="flex relative">
         <Sidebar
           selectedCategory={selectedCategory}
           onCategorySelect={setSelectedCategory}
+          isAdmin={user.role === 'admin'}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
         />
         
-        <main className="flex-1 p-6">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {selectedCategory === 'all' ? 'Все документы' : `Документы: ${selectedCategory}`}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Найдено документов: {filteredDocuments.length}
-            </p>
+        <main className={`flex-1 min-w-0 p-4 sm:p-6 lg:p-8 transition-all duration-300 ${!isSidebarOpen ? 'lg:ml-0' : ''}`}>
+          <div className="mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {selectedCategory === 'all' 
+                    ? 'Все документы' 
+                    : categories.find(c => c.id === selectedCategory)?.name || 'Неизвестная категория'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  Найдено документов: <span className="font-medium text-gray-700">{filteredDocuments.length}</span>
+                </p>
+              </div>
+            </div>
           </div>
 
           {error && (
@@ -252,11 +266,13 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
           ) : (
             <DocumentGrid
               documents={filteredDocuments}
+              categories={categories}
               userRole={user.role}
               onEdit={handleEdit}
               onView={handleView}
               onShare={handleShare}
               onDelete={handleDelete}
+              selectedCategory={selectedCategory}
             />
           )}
         </main>
@@ -279,6 +295,7 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
               setEditingTable(null);
             }}
             onSave={handleSaveTable}
+            categories={categories}
           />
 
           <DocumentEditor
@@ -289,6 +306,7 @@ function AuthenticatedApp({ user, signOut }: { user: User; signOut: () => Promis
               setEditingDocument(null);
             }}
             onSave={handleSaveDocument}
+            categories={categories}
           />
         </>
       )}

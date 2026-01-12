@@ -1,6 +1,5 @@
 // Типы для базы знаний
 
-export type CategoryType = 'materials' | 'furniture' | 'order-forms' | 'production' | 'other';
 export type DocumentType = 'table' | 'document';
 export type UserRole = 'admin' | 'partner';
 
@@ -16,7 +15,7 @@ export interface TableRow {
 export interface Table {
   id: string;
   name: string;
-  category: CategoryType;
+  categoryId: string; // ID категории из БД
   description?: string;
   columns: string[]; // Названия колонок
   rows: TableRow[]; // Данные таблицы
@@ -30,7 +29,7 @@ export interface Table {
 export interface Document {
   id: string;
   name: string;
-  category: CategoryType;
+  categoryId: string; // ID категории из БД
   description?: string;
   content: string; // Текстовое содержимое
   createdAt: Date;
@@ -43,10 +42,15 @@ export interface Document {
 export type DocumentItem = Table | Document;
 
 export interface Category {
-  id: CategoryType;
+  id: string; // UUID из БД
   name: string;
+  parentId?: string | null; // ID родительской категории для подкатегорий
   icon: string;
   color: string;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+  userId?: string | null;
 }
 
 export interface User {

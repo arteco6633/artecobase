@@ -6,7 +6,8 @@ import type { DocumentItem, Table, Document } from '../types';
 interface DocumentRow {
   id: string;
   name: string;
-  category: string;
+  category: string | null; // Старое поле, оставляем для обратной совместимости
+  category_id: string | null; // Новое поле
   description: string | null;
   type: 'table' | 'document';
   content: any; // JSON для таблиц: {columns: [], rows: []}, для документов: {text: ""}
@@ -35,7 +36,7 @@ export function useDocuments() {
 
       const { data, error: fetchError } = await supabase
         .from('documents')
-        .select('*')
+        .select('*, category_id')
         .order('created_at', { ascending: false });
 
       if (fetchError) {
@@ -44,12 +45,15 @@ export function useDocuments() {
 
       // Преобразуем данные из Supabase в формат приложения
       const transformedDocs: DocumentItem[] = (data || []).map((row: DocumentRow) => {
+        // Используем category_id, если есть
+        const categoryId = row.category_id || '';
+        
         if (row.type === 'table') {
           const tableContent = row.content as { columns: string[]; rows: Array<{ id: string; cells: Array<{ value: string }> }> };
           return {
             id: row.id,
             name: row.name,
-            category: row.category as any,
+            categoryId: categoryId,
             description: row.description || undefined,
             columns: tableContent?.columns || [],
             rows: tableContent?.rows || [],
@@ -64,7 +68,7 @@ export function useDocuments() {
           return {
             id: row.id,
             name: row.name,
-            category: row.category as any,
+            categoryId: categoryId,
             description: row.description || undefined,
             content: docContent?.text || '',
             createdAt: new Date(row.created_at),
@@ -94,7 +98,7 @@ export function useDocuments() {
         .from('documents')
         .insert({
           name: table.name,
-          category: table.category,
+          category_id: table.categoryId,
           description: table.description || null,
           type: 'table',
           content: {
@@ -125,7 +129,7 @@ export function useDocuments() {
         .from('documents')
         .insert({
           name: doc.name,
-          category: doc.category,
+          category_id: doc.categoryId,
           description: doc.description || null,
           type: 'document',
           content: {
@@ -153,20 +157,20 @@ export function useDocuments() {
 
       const updatedTable = { ...table, ...updates };
 
-      const { error: updateError } = await supabase
-        .from('documents')
-        .update({
-          name: updatedTable.name,
-          category: updatedTable.category,
-          description: updatedTable.description || null,
-          content: {
-            columns: updatedTable.columns,
-            rows: updatedTable.rows,
-          },
-          tags: updatedTable.tags,
-          shareable: updatedTable.shareable,
-        })
-        .eq('id', id);
+          const { error: updateError } = await supabase
+            .from('documents')
+            .update({
+              name: updatedTable.name,
+              category_id: updatedTable.categoryId,
+              description: updatedTable.description || null,
+              content: {
+                columns: updatedTable.columns,
+                rows: updatedTable.rows,
+              },
+              tags: updatedTable.tags,
+              shareable: updatedTable.shareable,
+            })
+            .eq('id', id);
 
       if (updateError) throw updateError;
 
@@ -185,19 +189,19 @@ export function useDocuments() {
 
       const updatedDoc = { ...doc, ...updates };
 
-      const { error: updateError } = await supabase
-        .from('documents')
-        .update({
-          name: updatedDoc.name,
-          category: updatedDoc.category,
-          description: updatedDoc.description || null,
-          content: {
-            text: updatedDoc.content,
-          },
-          tags: updatedDoc.tags,
-          shareable: updatedDoc.shareable,
-        })
-        .eq('id', id);
+          const { error: updateError } = await supabase
+            .from('documents')
+            .update({
+              name: updatedDoc.name,
+              category_id: updatedDoc.categoryId,
+              description: updatedDoc.description || null,
+              content: {
+                text: updatedDoc.content,
+              },
+              tags: updatedDoc.tags,
+              shareable: updatedDoc.shareable,
+            })
+            .eq('id', id);
 
       if (updateError) throw updateError;
 

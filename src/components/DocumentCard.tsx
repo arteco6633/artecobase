@@ -1,11 +1,9 @@
+import { Eye, Edit2, Share2, Trash2, FileText, Table2 } from 'lucide-react';
 import type { DocumentItem } from '../types';
-import { Share2, Trash2, Table as TableIcon, FileText, Edit, Eye } from 'lucide-react';
-import { format } from 'date-fns';
-import type { UserRole } from '../types';
 
 interface DocumentCardProps {
   document: DocumentItem;
-  userRole?: UserRole;
+  userRole: 'admin' | 'partner';
   onEdit: (doc: DocumentItem) => void;
   onView: (doc: DocumentItem) => void;
   onShare: (doc: DocumentItem) => void;
@@ -14,22 +12,29 @@ interface DocumentCardProps {
 
 export function DocumentCard({ document, userRole, onEdit, onView, onShare, onDelete }: DocumentCardProps) {
   const isTable = 'columns' in document;
-  const Icon = isTable ? TableIcon : FileText;
-  const canEdit = userRole === 'admin';
+  const Icon = isTable ? Table2 : FileText;
+
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-lg transition-all duration-200 card-shadow hover:card-shadow-hover group">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
-          <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
-            isTable ? 'bg-green-50' : 'bg-blue-50'
-          }`}>
-            <Icon className={`w-5 h-5 ${isTable ? 'text-green-600' : 'text-blue-600'}`} />
+          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center border border-blue-200">
+            <Icon className="w-5 h-5 text-blue-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 truncate">{document.name}</h3>
-            <p className="text-sm text-gray-500">
-              {isTable ? 'Таблица' : 'Документ'} • {format(document.updatedAt, 'dd MMM yyyy')}
+            <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+              {document.name}
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {isTable ? 'Таблица' : 'Документ'} • {formatDate(document.updatedAt)}
             </p>
           </div>
         </div>
@@ -40,62 +45,69 @@ export function DocumentCard({ document, userRole, onEdit, onView, onShare, onDe
       )}
 
       {isTable && (
-        <div className="mb-3">
-          <p className="text-xs text-gray-500">
-            Колонок: {document.columns.length} • Строк: {document.rows.length}
-          </p>
+        <div className="flex items-center space-x-4 text-xs text-gray-500 mb-3 pb-3 border-b border-gray-100">
+          <span className="flex items-center space-x-1">
+            <span className="font-medium">{document.columns.length}</span>
+            <span>колонок</span>
+          </span>
+          <span className="flex items-center space-x-1">
+            <span className="font-medium">{document.rows.length}</span>
+            <span>строк</span>
+          </span>
         </div>
       )}
 
-      {document.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {document.tags.map((tag, index) => (
-            <span
-              key={index}
-              className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="flex items-center space-x-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-1">
           <button
             onClick={() => onView(document)}
-            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Просмотреть"
+            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+            title="Просмотр"
           >
             <Eye className="w-4 h-4" />
           </button>
-          {canEdit && (
+
+          {userRole === 'admin' && (
             <>
               <button
                 onClick={() => onEdit(document)}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                 title="Редактировать"
               >
-                <Edit className="w-4 h-4" />
+                <Edit2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onShare(document)}
-                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
                 title="Поделиться"
               >
                 <Share2 className="w-4 h-4" />
               </button>
+              <button
+                onClick={() => onDelete(document.id)}
+                className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                title="Удалить"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </>
           )}
         </div>
-        {canEdit && (
-          <button
-            onClick={() => onDelete(document.id)}
-            className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            title="Удалить"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+
+        {document.tags && document.tags.length > 0 && (
+          <div className="flex items-center space-x-1 flex-wrap gap-1">
+            {document.tags.slice(0, 2).map((tag, index) => (
+              <span
+                key={index}
+                className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+              >
+                {tag}
+              </span>
+            ))}
+            {document.tags.length > 2 && (
+              <span className="text-xs text-gray-400">+{document.tags.length - 2}</span>
+            )}
+          </div>
         )}
       </div>
     </div>
