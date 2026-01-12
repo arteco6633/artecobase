@@ -298,7 +298,9 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
                           <div className="flex items-center space-x-2">
                             <input
                               type="file"
-                              ref={(el) => (fileInputRefs.current[row.id] = el)}
+                              ref={(el) => {
+                                fileInputRefs.current[row.id] = el;
+                              }}
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {

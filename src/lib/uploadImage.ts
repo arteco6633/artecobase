@@ -18,7 +18,7 @@ export async function uploadTableImage(
     const fileName = `${tableId}/${rowId}-${Date.now()}.${fileExt}`;
 
     // Загружаем файл в Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from('table-images')
       .upload(fileName, file, {
         cacheControl: '3600',
