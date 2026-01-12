@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Save, Image as ImageIcon } from 'lucide-react';
 import type { Table, Category } from '../types';
 import { uploadTableImage } from '../lib/uploadImage';
+import { ImageViewer } from './ImageViewer';
 
 interface TableEditorProps {
   table: Table | null;
@@ -18,6 +19,7 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
   const [columns, setColumns] = useState<string[]>(['Название', 'Цена', 'Ед. изм.']);
   const [rows, setRows] = useState<Array<{ id: string; cells: Array<{ value: string }>; imageUrl?: string }>>([]);
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   useEffect(() => {
@@ -317,9 +319,24 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
                                 <img
                                   src={row.imageUrl}
                                   alt="Превью"
-                                  className="w-10 h-10 object-cover rounded border border-gray-300 cursor-pointer"
-                                  onClick={() => handleImageClick(row.id)}
+                                  className="w-10 h-10 object-cover rounded border border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedImageUrl(row.imageUrl || null);
+                                  }}
+                                  title="Нажмите для увеличения"
                                 />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleImageClick(row.id);
+                                  }}
+                                  className="absolute -top-2 -left-2 bg-blue-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                  title="Заменить фото"
+                                  style={{ fontSize: '10px' }}
+                                >
+                                  ↻
+                                </button>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -389,6 +406,15 @@ export function TableEditor({ table, isOpen, onClose, onSave, categories }: Tabl
           </button>
         </div>
       </div>
+
+      {/* Модальное окно для просмотра фото */}
+      {selectedImageUrl && (
+        <ImageViewer
+          imageUrl={selectedImageUrl}
+          isOpen={!!selectedImageUrl}
+          onClose={() => setSelectedImageUrl(null)}
+        />
+      )}
     </div>
   );
 }

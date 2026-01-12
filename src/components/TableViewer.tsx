@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { X, Search } from 'lucide-react';
 import type { Table } from '../types';
+import { ImageViewer } from './ImageViewer';
 
 interface TableViewerProps {
   table: Table | null;
@@ -10,6 +11,7 @@ interface TableViewerProps {
 
 export function TableViewer({ table, isOpen, onClose }: TableViewerProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   // Фильтрация строк таблицы по поисковому запросу
   const filteredRows = useMemo(() => {
@@ -117,7 +119,9 @@ export function TableViewer({ table, isOpen, onClose }: TableViewerProps) {
                           <img
                             src={row.imageUrl}
                             alt="Фото"
-                            className="w-16 h-16 object-cover rounded border border-gray-200"
+                            className="w-16 h-16 object-cover rounded border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setSelectedImageUrl(row.imageUrl || null)}
+                            title="Нажмите для увеличения"
                           />
                         ) : (
                           <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
@@ -182,6 +186,15 @@ export function TableViewer({ table, isOpen, onClose }: TableViewerProps) {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно для просмотра фото */}
+      {selectedImageUrl && (
+        <ImageViewer
+          imageUrl={selectedImageUrl}
+          isOpen={!!selectedImageUrl}
+          onClose={() => setSelectedImageUrl(null)}
+        />
+      )}
     </div>
   );
 }
